@@ -89,19 +89,17 @@ COUNTRY_ZH = {
 # 静态优选域名池
 
 EDGE_HOSTS = [
-    h.strip()
-    for h in os.environ.get(
-        "EDGE_HOSTS",
-        "saas.sin.fan:443,cdn.204910.best:443,www.mfyx.cn:443,p.etime.vip:443,cdn.ctn32.us.kg:443,cf.877774.xyz:443,spring.io:443,"
-        "cf.nyanya.moe:443,www.sloomb.com:443,op.chinwa.eu.cc:443,www.leics.police.uk:443,securecircle.com:443,www.shopify.com:443,"
-        "www.carousell.sg:443,www.dbs.com.sg:443,openai.com:443,linear.app:443,www.bilibili.com:443,uspto.gov:443,www.vmware.com:443",
-    ).split(",")
-    if h.strip()
+h.strip()
+for h in os.environ.get(
+"EDGE_HOSTS",
+"www.revechat.com:443,networksolutions.com:443,aimagazine.com:443,kwiat.com:443,cdnjs.com:443,ping.pe:443,buyshoes.shop:443,singapore.com:443,cf.777791.xyz:443,www.speedtest.net:443,kniu.cc:443,www.redboxtools.com:443,cloudflare-ip.mofashi.ltd:443,www.npmjs.com:443,encryptedsni.com:443,cnllm.com:443,www.mlkj888.com:443,cf-ip-site.vov.moe:443,my.vultr.com:443,qoj.ac:443,www.lbl.gov:443,webn.cc:443,informahealthcare.com:443,cdn.7zz.cn:443,s.bookcdn.com:443,cdn.sketch.com:443,unpkg.com:443,example.com:443,go1.dematic.com:443,dev.graco.com:443,builtbybuffalo.com:443,cdn.cnno.de:443,registry.npmjs.org:443,www.mfyx.cn:443,dash.domain.digitalplat.org:443,101yaoye.com:443,hitcon.org:443,cdn.ddeed.de:443,absen.com:443,scalacube.com:443,www.sage.com:443,bitsight.com:443,www.visa.com.sg:443,serviceshub.samsclub.com:443,salaryexpert.com:443,www.ox.ac.uk:443,www.hypixel.net:443,rankmath.com:443,leawo.org:443,ncc.gov.ng:443",
+).split(",")
+if h.strip()
 ]
 
 # 优选 API 地址配置 (支持逗号分隔多个，可配置在 GitHub Action Secret / Env 中)
 
-OPTIMAL_API = os.environ.get("OPTIMAL_API", "https://cf.090227.xyz/ct?ips=6&port=443")
+OPTIMAL_API = os.environ.get("OPTIMAL_API", "https://cf.090227.xyz/cu?port=443")
 
 NODES_URL = os.environ.get("NODES_URL", "https://alaxi1108-hash.github.io/gate/nodes.txt")
 
