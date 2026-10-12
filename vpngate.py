@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
+
 VPN Gate SSTP 节点检测流水线 (精简版)
 =====================================
+
 流程:
-  1. 获取 VPN Gate 原始节点
-  2. 只保留带 TCP 入口的 SSTP 节点
-  3. 去重
-  4. 并发调用检测 Worker
-  5. 获取并合并优选域名与优选 API (Cloudflare 入口)
-  6. 生成 public/data.json + public/index.html + public/nodes.txt
-"""
+
+    1. 获取 VPN Gate 原始节点
+    2. 只保留带 TCP 入口的 SSTP 节点
+    3. 去重
+    4. 并发调用检测 Worker
+    5. 获取并合并优选域名与优选 API (Cloudflare 入口)
+    6. 生成 public/data.json + public/index.html + public/nodes.txt
+       """
 
 import base64
 import csv
@@ -32,8 +35,11 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 # ---------------------------------------------------------------------------
+
 # 配置
+
 # ---------------------------------------------------------------------------
+
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
 VPNGATE_API = os.environ.get("VPNGATE_API", "http://www.vpngate.net/api/iphone/")
@@ -41,7 +47,7 @@ VPNGATE_MIRROR = os.environ.get(
     "VPNGATE_MIRROR",
     "https://raw.githubusercontent.com/fdciabdul/Vpngate-Scraper-API/main/json/data.json",
 )
-WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "https://test.jasont.ccwu.cc/check?sstp=vpn:vpn@")
+WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "https://你的域名/check?sstp=vpn:vpn@")
 CONCURRENCY = max(1, int(os.environ.get("CHECK_CONCURRENCY", "32")))
 CHECK_TIMEOUT = float(os.environ.get("CHECK_TIMEOUT", "90"))
 MAX_CHECK_NODES = int(os.environ.get("MAX_CHECK_NODES", "0"))
@@ -81,25 +87,30 @@ COUNTRY_ZH = {
 }
 
 # 静态优选域名池
+
 EDGE_HOSTS = [
     h.strip()
     for h in os.environ.get(
         "EDGE_HOSTS",
-        "www.doiting.com:443,time.is:443,japan.com:443,9mod.com:443,cnllm.com:443,cf.xreak.top:443,my.vultr.com:443,"
-        "www.mlkj888.com:443,www.npmjs.com:443,cdn.jwcmdr.top:443,unpkg.com:443,www.speedtest.net:443,www.ox.ac.uk:443,"
-        "salaryexpert.com:443,nist.gov:443,www.mfyx.cn:443,constitution.congress.gov:443,bestcf.030101.xyz:443,investor.apple.com:443",
+        "saas.sin.fan:443,cdn.204910.best:443,www.mfyx.cn:443,p.etime.vip:443,cdn.ctn32.us.kg:443,cf.877774.xyz:443,spring.io:443,"
+        "cf.nyanya.moe:443,www.sloomb.com:443,op.chinwa.eu.cc:443,www.leics.police.uk:443,securecircle.com:443,www.shopify.com:443,"
+        "www.carousell.sg:443,www.dbs.com.sg:443,openai.com:443,linear.app:443,www.bilibili.com:443,uspto.gov:443,www.vmware.com:443",
     ).split(",")
     if h.strip()
 ]
 
 # 优选 API 地址配置 (支持逗号分隔多个，可配置在 GitHub Action Secret / Env 中)
-OPTIMAL_API = os.environ.get("OPTIMAL_API", "https://cf.090227.xyz/cu?port=443")
+
+OPTIMAL_API = os.environ.get("OPTIMAL_API", "https://cf.090227.xyz/ct?ips=6&port=443")
 
 NODES_URL = os.environ.get("NODES_URL", "https://alaxi1108-hash.github.io/gate/nodes.txt")
 
 # ---------------------------------------------------------------------------
+
 # 日志
+
 # ---------------------------------------------------------------------------
+
 _section = None
 
 def log(section, msg=""):
@@ -115,8 +126,11 @@ def die(msg):
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
+
 # 数据抓取
+
 # ---------------------------------------------------------------------------
+
 def fetch_vpngate():
     try:
         log("VPN GATE", f"获取官方 API: {VPNGATE_API}")
@@ -172,7 +186,7 @@ def parse_csv(text):
         "countryshort": idx.get("countryshort", 6),
         "openvpn_configdata_base64": idx.get("openvpn_configdata_base64", len(header) - 1),
     }
-
+    
     rows = []
     for ln in data_lines:
         fields = next(csv.reader(io.StringIO(ln)))
@@ -212,8 +226,11 @@ def parse_mirror_json(data):
     return rows
 
 # ---------------------------------------------------------------------------
+
 # 优选 API 获取与解析
+
 # ---------------------------------------------------------------------------
+
 def fetch_optimal_api_endpoints(api_urls_str):
     """
     拉取优选 API，解析如: 172.66.1.179:443#CF 电信优选 格式的内容
@@ -222,6 +239,7 @@ def fetch_optimal_api_endpoints(api_urls_str):
     if not api_urls_str.strip():
         return []
     
+
     endpoints = []
     urls = [u.strip() for u in api_urls_str.split(",") if u.strip()]
     for url in urls:
@@ -260,7 +278,7 @@ def get_combined_edge_hosts():
 
     # 2. 拉取优选 API 端点
     api_hosts = fetch_optimal_api_endpoints(OPTIMAL_API)
-
+    
     # 3. 合并与去重 (保留原始列表顺序)
     combined = []
     seen = set()
@@ -268,13 +286,16 @@ def get_combined_edge_hosts():
         if h and h not in seen:
             seen.add(h)
             combined.append(h)
-
+    
     log("EDGE POOL", f"汇总入口地址池: 静态域名 {len(static_hosts)} 个, API 获取 {len(api_hosts)} 个, 合并有效入口共 {len(combined)} 个")
     return combined if combined else EDGE_HOSTS
 
 # ---------------------------------------------------------------------------
+
 # 筛选 SSTP 节点
+
 # ---------------------------------------------------------------------------
+
 _PROTO_TCP_RE = re.compile(r"^proto\s+(tcp|tcp4|tcp6)\b", re.M)
 _REMOTE_RE = re.compile(r"^remote\s+\S+\s+(\d+)", re.M)
 
@@ -309,8 +330,11 @@ def dedupe(nodes):
     return out
 
 # ---------------------------------------------------------------------------
+
 # 检测 Worker
+
 # ---------------------------------------------------------------------------
+
 def classify_network(host, exit_org, is_datacenter=None):
     if is_datacenter is True: return "datacenter"
     if is_datacenter is False: return "residential"
@@ -378,8 +402,11 @@ def check_all(nodes, session):
     return results
 
 # ---------------------------------------------------------------------------
+
 # 生成数据
+
 # ---------------------------------------------------------------------------
+
 def build_outputs(results, raw_count, sstp_count, source):
     available = [r for r in results if r.get("success")]
     countries = {}
@@ -404,7 +431,7 @@ def build_outputs(results, raw_count, sstp_count, source):
         grp["datacenter"] = sum(1 for n in grp["nodes"] if n["residential"] == "datacenter")
         grp["nodes"].sort(key=lambda n: (n.get("latency_ms") is None, n.get("latency_ms") or 0, n["host"]))
         by_country[name] = grp
-
+    
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "source": source,
@@ -458,16 +485,19 @@ def write_outputs(data, edge_hosts):
         )
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
-
+    
     nodes_path = os.path.join(PUBLIC_DIR, "nodes.txt")
     with open(nodes_path, "w", encoding="utf-8") as f:
         f.write(build_nodes_text(data, edge_hosts))
-
+    
     return data_path, html_path, nodes_path
 
 # ---------------------------------------------------------------------------
+
 # main
+
 # ---------------------------------------------------------------------------
+
 def main():
     session = requests.Session()
     rows, source = fetch_vpngate()
@@ -480,37 +510,37 @@ def main():
     if sstp_count == 0:
         die(f"从 {raw_count} 个原始节点中没有解析出任何 SSTP(TCP) 节点 — 数据格式可能已变化, 需要人工适配")
     uniq = dedupe(sstp_nodes)
-
+    
     if MAX_CHECK_NODES > 0:
         uniq = uniq[:MAX_CHECK_NODES]
-
+    
     log("VPN GATE", f"获取原始节点: {raw_count}")
     log("VPN GATE", f"SSTP 节点: {sstp_count}")
     log("VPN GATE", f"去重后: {len(uniq)}")
-
+    
     log("CLOUDFLARE WORKER", f"提交检测: {len(uniq)} (并发 {CONCURRENCY}, 单请求超时 {CHECK_TIMEOUT}s)")
     t0 = time.time()
     results = check_all(uniq, session)
     elapsed = time.time() - t0
-
+    
     success = [r for r in results if r.get("success")]
     failed = [r for r in results if not r.get("success")]
     worker_errors = [r for r in failed if r.get("worker_error")]
-
+    
     log("CLOUDFLARE WORKER", f"检测成功: {len(success)}")
     log("CLOUDFLARE WORKER", f"检测失败: {len(failed)}" + (f" (其中 Worker 异常 {len(worker_errors)})" if worker_errors else ""))
     log("CLOUDFLARE WORKER", f"耗时: {elapsed:.1f}s")
-
+    
     if uniq and not success and len(worker_errors) == len(uniq):
         die("Worker 全部请求异常, 检测服务不可用 — 本次运行判定失败 (不生成空结果)")
-
+    
     data = build_outputs(results, raw_count, sstp_count, source)
     log("RESULT", f"可用节点: {len(success)}")
     log("RESULT", f"国家数量: {data['stats']['countries']}")
-
+    
     # 动态拉取 API 并与静态优选域名混合
     edge_hosts = get_combined_edge_hosts()
-
+    
     data_path, html_path, nodes_path = write_outputs(data, edge_hosts)
     log("WEBSITE", f"生成 {os.path.relpath(data_path, REPO_DIR)}")
     log("WEBSITE", f"生成 {os.path.relpath(html_path, REPO_DIR)}")
